@@ -1,0 +1,13 @@
+# Fair Knight's air control check (docs/fair-knight/technical.md): coin, start, then a jump right with left held
+# in the air, and a neutral jump with right held. gng_headless --fk-air off|assist|full --ram-watch 0503,0507,0511
+1300 system bf
+1306 system ff
+1400 system fe
+1406 system ff
+2000 p1 fe
+2030 p1 de
+2034 p1 fd
+2080 p1 ff
+2120 p1 df
+2124 p1 fe
+2170 p1 ff

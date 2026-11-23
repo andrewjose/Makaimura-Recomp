@@ -89,6 +89,7 @@ state's wall and screen-edge clamp (`93E5`/`9405` → `8B7D`), not the push: X s
 - Air control full: a jump right with left held turns at once (X `$82` → `$63` by frame 2062; arcade `$82` →
   `$A2`), sprite `$96E6`; a neutral jump steers right.
 - All on, long_play: 40001 frames, no fault; identical to the arcade's until frame 1974 (the demo, coin, intro).
+- Air control script: `tests/controls/fair_knight_air.txt`.
 - Not checked yet: steering into walls in the air; state 5 (walking off a ledge) has no air control.
 
 ## Build
@@ -101,7 +102,7 @@ cmake -S . -B build/lx -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build/lx --target makaimura gng_headless
 ```
 
-Windows from Linux: MinGW-w64 with SDL2's `SDL2-devel-*-mingw` package, a toolchain file, and
+Windows from Linux: MinGW-w64 with SDL2's `SDL2-devel-*-mingw` package and `tools/fair_knight/mingw-w64.cmake`, which sets
 `-DCMAKE_C_STANDARD_LIBRARIES=<SDL2>/lib/libSDL2.dll.a` (SDL2main must come before SDL2 for ld). Two portability
 fixes in this fork are upstream candidates: libm linked outside MSVC (`lround` in `sound.c`), and `main.c`'s
 `tell()` renamed `notify()` (it clashes with MinGW's `io.h`).
