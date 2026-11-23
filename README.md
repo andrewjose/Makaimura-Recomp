@@ -1,5 +1,8 @@
 # Makaimura Recomp
 
+> **This fork adds [Fair Knight](docs/fair-knight/README.md)**: optional fairer gameplay (longer invincibility
+> after a hit, no knockback, air control), set in `makaimura.ini`'s `[fair_knight]`. Off, the game is upstream's.
+
 A native PC port of Capcom's 1985 arcade game **Makaimura** (*Ghosts'n Goblins* in the West), Japan
 revision G. It is being made by translating the arcade board's MC6809 program into C ahead of time and running
 it on a model of the board, aiming at exactly what the arcade does, frame for frame. It uses the approach and
