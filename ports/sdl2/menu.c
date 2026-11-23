@@ -10,6 +10,7 @@
  *    32 columns of 8 pixels, 28 rows. Two pages: the main one, and the controls (each action and the window's own
  *    keys: Enter, then the key or the pad's button that takes it; Delete gives it its defaults back).
  */
+#include "gng/fair_knight.h"
 #include "menu.h"
 
 #include "gng/video.h"
@@ -818,7 +819,7 @@ void menu_draw(uint32_t *pixels, const settings *s)
 #endif
 	/* the title and the version (CMakeLists.txt's) */
 	char title[COLUMNS + 1];
-	snprintf(title, sizeof(title), "MAKAIMURA RECOMP V%s", MAKAIMURA_VERSION);
+	snprintf(title, sizeof(title), "FAIR KNIGHT V%s RECOMP V%s", FAIR_KNIGHT_VERSION, MAKAIMURA_VERSION);
 	put_text(pixels, (COLUMNS - (int)strlen(title)) / 2, 0, title, yellow);
 	int row = 2;
 	char buffer[64];

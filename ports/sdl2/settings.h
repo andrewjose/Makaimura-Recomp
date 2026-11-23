@@ -69,6 +69,10 @@ typedef struct settings
 	bool keep_high_scores;    /* the ranking kept between sessions (hiscore.h) */
 	bool keep_replays;        /* each game recorded, kept as a replay if the player says so (replays.h) */
 	bool check_updates;       /* the newest release looked up as the program starts (updater.h) */
+	/* [fair_knight]: gng/fair_knight.h's changes (docs/fair-knight/), applied as the board starts */
+	int fk_invincibility;     /* frames after a hit; 120 is the arcade's */
+	bool fk_no_knockback;
+	int fk_air_control;       /* fk_air_control: off, assist, full */
 	/* [window] */
 	int scale;            /* the window's height, in the picture's lines (224 each) */
 	bool fullscreen;

@@ -11,6 +11,7 @@
 #include "settings.h"
 
 #include "gng/board.h"
+#include "gng/fair_knight.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -151,6 +152,10 @@ void settings_defaults(settings *s)
 	s->keep_high_scores = true;
 	s->keep_replays = true;
 	s->check_updates = true;
+	/* Fair Knight: its KNIGHT preset (3 s after a hit, no knockback, full air control) */
+	s->fk_invincibility = 180;
+	s->fk_no_knockback = true;
+	s->fk_air_control = FK_AIR_FULL;
 	s->panels_debug = false;
 	s->sync = SYNC_BOARD;
 	s->sound = true;
@@ -333,6 +338,16 @@ static int set(settings *s, const char *section, const char *name, char *value)
 			}
 		return 0;
 	}
+	if (!SDL_strcasecmp(section, "fair_knight"))
+	{
+		if (!SDL_strcasecmp(name, "invincibility") && number(value, 0, 255, &n))
+			return s->fk_invincibility = n, 1;
+		if (!SDL_strcasecmp(name, "knockback") && (n = boolean(value)) >= 0)
+			return s->fk_no_knockback = !n, 1;
+		if (!SDL_strcasecmp(name, "air_control") && (n = fk_air_control_parse(value)) >= 0)
+			return s->fk_air_control = n, 1;
+		return 0;
+	}
 	if (!SDL_strcasecmp(section, "window"))
 	{
 		if (!SDL_strcasecmp(name, "scale"))
@@ -506,6 +521,15 @@ const char *settings_save(const settings *s, const char *path)
 				value = dips[i].values[v].name;
 		fprintf(file, "; %s\n%s = %s\n", dips[i].help, dips[i].name, value ? value : "");
 	}
+	fprintf(file, "\n[fair_knight]\n; Fair Knight's changes to the game (docs/fair-knight/), from the board's start (F3). The arcade's\n"
+		"; own game: invincibility = 120, knockback = true, air_control = off\n");
+	fprintf(file, "; frames of invincibility after a hit (60 a second; the arcade's 120)\ninvincibility = %d\n",
+		s->fk_invincibility);
+	fprintf(file, "; false: a hit no longer pushes Arthur back (he hops in place)\nknockback = %s\n",
+		s->fk_no_knockback ? "false" : "true");
+	fprintf(file, "; off (the arcade's: a jump's direction is fixed), assist (left or right in the air turns it), full (the\n"
+		"; jump goes where the stick says, straight up with it centred)\nair_control = %s\n",
+		fk_air_control_name(s->fk_air_control));
 	fprintf(file, "\n[window]\n; the window's size: the picture's height times this (224 lines each)\nscale = %d\n"
 		"; full screen (also F11 or Alt+Enter)\nfullscreen = %s\n", s->scale, s->fullscreen ? "true" : "false");
 	fprintf(file, "\n[video]\n; 4:3 (the shape of the arcade's monitor: its 256 x 224 picture's pixels a little wider "

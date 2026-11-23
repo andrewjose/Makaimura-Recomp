@@ -59,6 +59,7 @@
 #include "rom_drop.h"
 #include "updater.h"
 #include "settings.h"
+#include "gng/fair_knight.h"
 
 #include <math.h>
 #ifdef _WIN32
@@ -75,7 +76,7 @@
 #ifndef MAKAIMURA_VERSION
 #define MAKAIMURA_VERSION "?"
 #endif
-#define TITLE "Makaimura Recomp v" MAKAIMURA_VERSION    /* (the version: CMakeLists.txt's) */
+#define TITLE "Makaimura Recomp v" MAKAIMURA_VERSION " - Fair Knight v" FAIR_KNIGHT_VERSION    /* (the version: CMakeLists.txt's) */
 
 static settings options;
 static char settings_path[1024];
@@ -120,7 +121,7 @@ static char segment_base[1300];          /* the replay being written: its path w
 static int segment_played, segment_sync;
 static int segment_asking;               /* its game is over: kept or not, as the player answers */
 /* the update (updater.h): the releases' repository, the package's end (tools/make_release.ps1) */
-#define UPDATE_REPOSITORY "alexgbor/Makaimura-Recomp"
+#define UPDATE_REPOSITORY "andrewjose/Makaimura-Recomp"    /* Fair Knight's fork: never upstream's builds over it */
 #define UPDATE_PACKAGE "-win64.zip"
 static int update_restart;               /* installed: the new program started as this one closes */
 static const char *update_test_repository, *update_test_version;    /* --update-test */
@@ -272,7 +273,7 @@ static SDL_Texture *crt_texture;
 static uint32_t *crt_pixels;
 static int crt_width, crt_height;
 
-static void tell(const char *text)
+static void notify(const char *text)
 {
 	snprintf(notice, sizeof(notice), "%s", text);
 	notice_until = SDL_GetPerformanceCounter() + 2 * SDL_GetPerformanceFrequency();
@@ -354,7 +355,7 @@ static void save_state(uint16_t pc)
 	else
 		snprintf(text, sizeof(text), written ? "STATE %d SAVED" : "STATE %d NOT SAVED", options.state_slot);
 	if (!save_quietly || !written)
-		tell(text);
+		notify(text);
 	if (save_quietly)
 	{
 		/* (the practice's start: from it at the next VBLANK; not saved, the board the player's as it is) */
@@ -460,7 +461,7 @@ static void keep_segment(void)
 	rename(from, to);
 	segment_base[0] = 0;
 	segment_asking = 0;
-	tell("REPLAY KEPT");
+	notify("REPLAY KEPT");
 }
 
 /* A replay starts being written, from a state: the board's now at this instruction boundary ('pc': a game just
@@ -547,7 +548,7 @@ static void prepare_replay(void)
 	FILE *file = fopen(inp, "r");
 	if (!file)
 	{
-		tell("NO SUCH REPLAY");
+		notify("NO SUCH REPLAY");
 		return;
 	}
 	int board = 0;
@@ -652,7 +653,7 @@ static int start_practice(const practice_setup *setup)
 	free(state);
 	if (!written)
 	{
-		tell("PRACTICE NOT SAVED");
+		notify("PRACTICE NOT SAVED");
 		return 0;
 	}
 	snprintf(text, sizeof(text), "PRACTICE: AREA %d%s, %s", setup->area + 1, setup->loop ? " (2ND LOOP)" : "",
@@ -678,7 +679,7 @@ static void make_practice(uint64_t frame)
 		next_frame = 0;
 		read_controls();
 		if (!start_practice(&practice_chosen))
-			tell("PRACTICE NOT STARTED");
+			notify("PRACTICE NOT STARTED");
 		return;
 	}
 	gng.inputs.system = 0xFF;
@@ -732,7 +733,7 @@ static int load_state(const char *path, int slot, const char *done)
 	if (!file)
 	{
 		snprintf(text, sizeof(text), "NO STATE IN SLOT %d", slot);
-		tell(slot ? text : "NO STATE FILE");
+		notify(slot ? text : "NO STATE FILE");
 		return 0;
 	}
 	const size_t size = gng_state_size();
@@ -745,7 +746,7 @@ static int load_state(const char *path, int slot, const char *done)
 		snprintf(text, sizeof(text), "%s", problem);
 		for (char *c = text; *c; c++)
 			*c = (char)toupper((unsigned char)*c);
-		tell(text);
+		notify(text);
 		free(state);
 		return 0;
 	}
@@ -758,7 +759,7 @@ static int load_state(const char *path, int slot, const char *done)
 	while (script && script_next < script_count && script[script_next].frame < (int64_t)frame)
 		script_next++;
 	snprintf(text, sizeof(text), "STATE %d LOADED", slot);
-	tell(done ? done : slot ? text : "STATE LOADED");
+	notify(done ? done : slot ? text : "STATE LOADED");
 	hiscore_after_load = 1;
 	irq_seen = 1;
 	begin_segment(path, frame, -1);
@@ -1115,7 +1116,7 @@ static void menu_input(const SDL_Event *event)
 		replays_delete(folder, replay_names[menu_replay_chosen()]);
 		refresh_replays();
 		menu_show_replays(menu_replay_chosen());
-		tell("REPLAY DELETED");
+		notify("REPLAY DELETED");
 		return;
 	}
 	close_menu();
@@ -1191,7 +1192,7 @@ static void handle_event(const SDL_Event *event)
 			char text[32];
 			options.state_slot = options.state_slot % STATE_SLOTS + 1;
 			snprintf(text, sizeof(text), "STATE SLOT %d", options.state_slot);
-			tell(text);
+			notify(text);
 		}
 		else if (is_hotkey(code, HOTKEY_PAUSE))
 		{
@@ -1391,7 +1392,7 @@ static void on_vblank(uint64_t frame)
 	if (replay_playing && script_next >= script_count && (long)frame > replay_end)
 	{
 		stop_replay();
-		tell("REPLAY OVER: YOUR GAME");
+		notify("REPLAY OVER: YOUR GAME");
 	}
 	if (script)
 		play_script(frame);
@@ -1474,6 +1475,9 @@ static void power_on(void)
 	gng_power_on(&roms);
 	gng.accuracy = (accuracy_given >= 0 ? accuracy_given : options.accuracy) ? GNG_ACCURACY_BOARD : GNG_ACCURACY_MAME;
 	gng.inputs.dsw1 = dsw_given[0] >= 0 ? (uint8_t)dsw_given[0] : options.dsw1;
+	fk.invincibility = options.fk_invincibility;
+	fk.no_knockback = options.fk_no_knockback;
+	fk.air_control = options.fk_air_control;
 	gng.inputs.dsw2 = dsw_given[1] >= 0 ? (uint8_t)dsw_given[1] : options.dsw2;
 	/* the controls at the power on: none pressed (an input script's changes are from there) */
 	logged[0] = logged[1] = logged[2] = 0xFF;
