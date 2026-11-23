@@ -37,10 +37,13 @@
  *                        (gng/state.h), the run going on (the sound board run, as in every state)
  *      --ram-watch LIST FILE   at each VBLANK where one of the work RAM's bytes at LIST (hex, comma separated)
  *                        changed, "frame byte=value ..." (all of them): for finding what the program keeps where
+ *      --fk-invincibility N, --fk-no-knockback, --fk-air off|assist|full
+ *                        Fair Knight's changes (gng/fair_knight.h, docs/fair-knight/); all off by default
  *      --sample-phase N  (an experiment) the YM2203s' sample grid at Z80 time 24 n + N (MAME mode: 3, board: 0)
  *      --load-state FILE the run from that state instead of power-on (the same options as the run that saved it:
  *                        the outputs are then those of its frames after the state's; tools/check_states.py)
  */
+#include "gng/fair_knight.h"
 #include "gng/board.h"
 #include "gng/rom_set.h"
 #include "gng/state.h"
@@ -451,6 +454,17 @@ int main(int argc, char **argv)
 		else if (!strcmp(a, "--save-state")) { save_frame = atol(NEXT()); save_path = NEXT(); }
 		else if (!strcmp(a, "--load-state")) load_path = NEXT();
 		else if (!strcmp(a, "--sample-phase")) sample_phase = atoi(NEXT());
+		else if (!strcmp(a, "--fk-invincibility")) fk.invincibility = atoi(NEXT());
+		else if (!strcmp(a, "--fk-no-knockback")) fk.no_knockback = 1;
+		else if (!strcmp(a, "--fk-air"))
+		{
+			const char *mode = NEXT();
+			if ((fk.air_control = fk_air_control_parse(mode)) < 0)
+			{
+				fprintf(stderr, "gng_headless: --fk-air off, assist or full\n");
+				return 2;
+			}
+		}
 		else if (!strcmp(a, "--ram-watch"))
 		{
 			char list[256];

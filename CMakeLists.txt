@@ -100,12 +100,15 @@ file(GLOB MAKAIMURA_PROGRAM CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/build/generate
 file(GLOB MAKAIMURA_SOUND_PROGRAM CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/build/generated/sound/*.c)
 if(MAKAIMURA_PROGRAM AND MAKAIMURA_SOUND_PROGRAM)
 	add_library(gng_program STATIC runtime/src/m6809.c runtime/src/z80.c runtime/src/sound.c runtime/src/ym2203.c
-		runtime/src/state.c
+		runtime/src/state.c runtime/src/fair_knight.c
 		${MAKAIMURA_PROGRAM}
 		${MAKAIMURA_SOUND_PROGRAM})
 	target_include_directories(gng_program PUBLIC runtime/include ${CMAKE_SOURCE_DIR}/build/generated/program
 		${CMAKE_SOURCE_DIR}/build/generated/sound)
 	target_link_libraries(gng_program PUBLIC gng_runtime)
+	if(NOT MSVC)
+		target_link_libraries(gng_program PUBLIC m)    # (lround in sound.c: libm is separate outside MSVC)
+	endif()
 	if(MSVC)
 		# (the generated C: big switches, labels nothing jumps to)
 		target_compile_options(gng_program PRIVATE /wd4102 /bigobj)
@@ -119,7 +122,7 @@ if(MAKAIMURA_PROGRAM AND MAKAIMURA_SOUND_PROGRAM)
 	file(GLOB MAKAIMURA_DECOMPILED CONFIGURE_DEPENDS ${MAKAIMURA_DECOMPILED_DIR}/*.c)
 	if(MAKAIMURA_DECOMPILED)
 		add_library(gng_decompiled STATIC runtime/src/m6809_program.c runtime/src/z80.c runtime/src/sound.c
-			runtime/src/ym2203.c runtime/src/state.c
+			runtime/src/ym2203.c runtime/src/state.c runtime/src/fair_knight.c
 			${MAKAIMURA_DECOMPILED}
 			${MAKAIMURA_SOUND_PROGRAM})
 		target_include_directories(gng_decompiled PUBLIC runtime/include ${MAKAIMURA_DECOMPILED_DIR}
@@ -140,8 +143,13 @@ if(MAKAIMURA_PROGRAM AND MAKAIMURA_SOUND_PROGRAM)
 		# makaimura, the game: the window on the readable C (M6, src/), checked 1:1 against the reference as the
 		# translation is; makaimura_translated, the same window on the translation, kept to compare them. Without
 		# src/ (tools/m6809/decompile.py not run), makaimura is the translation's
+		# Fair Knight (docs/fair-knight/): its hooks are in the translation only (tools/m6809/translate.py), so
+		# with the option on makaimura is the translation's window, Fair Knight's changes in it
+		option(MAKAIMURA_FAIR_KNIGHT "makaimura on the translation, with Fair Knight's changes" ON)
 		set(MAKAIMURA_WINDOWS makaimura)
-		if(TARGET gng_decompiled)
+		if(MAKAIMURA_FAIR_KNIGHT)
+			message(STATUS "Fair Knight: makaimura runs the translation (its hooks)")
+		elseif(TARGET gng_decompiled)
 			list(APPEND MAKAIMURA_WINDOWS makaimura_translated)
 		else()
 			message(STATUS "No readable C (python tools/m6809/decompile.py): makaimura runs the translation")
@@ -150,7 +158,7 @@ if(MAKAIMURA_PROGRAM AND MAKAIMURA_SOUND_PROGRAM)
 			add_executable(${window} ports/sdl2/main.c ports/sdl2/settings.c ports/sdl2/audio_out.c
 				ports/sdl2/resampler.c ports/sdl2/menu.c ports/sdl2/recorder.c ports/sdl2/hud.c ports/sdl2/hiscore.c
 				ports/sdl2/replays.c ports/sdl2/rom_drop.c ports/sdl2/updater.c ports/sdl2/crt.c)
-			if(window STREQUAL "makaimura" AND TARGET gng_decompiled)
+			if(window STREQUAL "makaimura" AND TARGET gng_decompiled AND NOT MAKAIMURA_FAIR_KNIGHT)
 				target_link_libraries(${window} PRIVATE gng_decompiled SDL2::SDL2)
 			else()
 				target_link_libraries(${window} PRIVATE gng_program SDL2::SDL2)

@@ -56,6 +56,14 @@ HEADER = """/*
  * Makaimura (makaimurg): the MC6809 program translated to C.
  */
 """
+# Fair Knight (runtime/src/fair_knight.c, docs/fair-knight/): hand-written C called before the instruction at
+# each of these addresses of the fixed ROM. A hook gives back 0 (the instruction runs) or the address to go on at.
+# With its option off a hook changes nothing, so the program stays the board's.
+FAIR_KNIGHT_HOOKS = {
+    0x9984: "fk_hook_9984",   # the hit's invincibility (STB <$AD)
+    0x9A39: "fk_hook_9A39",   # the hit's hop direction (knockback)
+    0x93CA: "fk_hook_93CA",   # the jump state's direction (air control)
+}
 REGISTER_NAMES = ("cpu.a", "cpu.b", "cpu.dp", "cpu.x", "cpu.y", "cpu.u", "cpu.s")
 FLAG_NAMES = {"e": "cpu.fe", "f": "cpu.ff", "h": "cpu.fh", "i": "cpu.fi", "s": "cpu.fn", "z": "cpu.fz",
               "ov": "cpu.fv", "cy": "cpu.fc"}
@@ -194,6 +202,9 @@ class Translator:
         lifter = self.lifted[key]
         printer = Printer()
         lines = [f"cpu_pc = {hex16(address)};"] if any(isinstance(s, ir.Effect) for s in lifter.statements) else []
+        hook = FAIR_KNIGHT_HOOKS.get(address) if key[0] is None else None
+        if hook:
+            lines = [f"{{ const uint16_t fk_next_ = {hook}(); if (fk_next_) return fk_next_; }}"] + lines
         data = [access for access in lifter.accesses if access.kind in ("R", "W")]
         counted = 0
         position = 0
@@ -315,7 +326,11 @@ def main():
     with open(os.path.join(OUT, "program.h"), "w", encoding="ascii", newline="\n") as out:
         out.write(HEADER + "#ifndef MAKAIMURA_PROGRAM_H\n#define MAKAIMURA_PROGRAM_H\n\n#include <stdint.h>\n\n"
                   + prototypes + "\n\n#endif\n")
-    include = '#include "m6809/cpu.h"\n#include "program.h"\n\n'
+    include = '#include "m6809/cpu.h"\n#include "gng/fair_knight.h"\n#include "program.h"\n\n'
+    missing = [f"{a:04X}" for a in FAIR_KNIGHT_HOOKS if (None, a) not in translator.instructions]
+    if missing:
+        print(f"Fair Knight: no instruction at {', '.join(missing)}: not this ROM's program?")
+        return 1
     files = 0
     for number, first in enumerate(range(0, len(regions), REGIONS_PER_FILE)):
         texts = [translator.region_text(r) for r in regions[first:first + REGIONS_PER_FILE]]
